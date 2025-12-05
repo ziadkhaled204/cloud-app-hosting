@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>hello Computing Task</title>
+    <style>
+      body {
+        font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        background: linear-gradient(135deg, #e3f2fd, #ffffff);
+        margin: 0;
+        padding: 0;
+        height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+
+      .container {
+        background: #fff;
+        padding: 2rem 3rem;
+        border-radius: 16px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        text-align: center;
+        max-width: 450px;
+        width: 100%;
+      }
+
+      h1 {
+        font-size: 1.8rem;
+        color: #1976d2;
+        margin-bottom: 1.5rem;
+      }
+
+      button {
+        background-color: #1976d2;
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        padding: 0.8rem 1.4rem;
+        margin: 0.4rem;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: all 0.25s ease;
+      }
+
+      button:hover {
+        background-color: #1565c0;
+        transform: translateY(-2px);
+      }
+
+      button:active {
+        transform: translateY(0);
+      }
+
+      pre {
+        background-color: #f1f3f4;
+        color: #333;
+        text-align: left;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-top: 1.2rem;
+        overflow-x: auto;
+        max-height: 200px;
+        font-size: 0.9rem;
+        box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.1);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Firebase Cloud Messaging</h1>
+      <div>
+        <button id="enableBtn">Enable Notifications</button>
+        <button id="getTokenBtn">Get Token</button>
+      </div>
+      <pre id="out">Notification will appear here...</pre>
+    </div>
+
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
+      import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-analytics.js";
+      import {
+        getMessaging,
+        getToken,
+        onMessage,
+      } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-messaging.js";
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyCVYH1qQOWKgRZDicbvbEq5UOeiD3R0fpA",
+        authDomain: "fir-hosting-b0496.firebaseapp.com",
+        projectId: "fir-hosting-b0496",
+        storageBucket: "fir-hosting-b0496.firebasestorage.app",
+        messagingSenderId: "569541812004",
+        appId: "1:569541812004:web:3418d0c4b0707563bfddb1",
+      };
+
+      const app = initializeApp(firebaseConfig);
+      getAnalytics(app);
+
+      const messaging = getMessaging(app);
+      const VAPID_KEY =
+        "BOos0IpDTRNP6ObAD37aTqfT-srTZFQBTFcQ_-c62QaneRipmEBusUhJvyPtohposFnERBUtZ2EL3nfxfNFXlPc";
+
+      const out = (txt) => {
+        document.getElementById("out").textContent += txt + "\n";
+        console.log(txt);
+      };
+
+      async function registerSW() {
+        if ("serviceWorker" in navigator) {
+          try {
+            const reg = await navigator.serviceWorker.register(
+              "/firebase-messaging-sw.js"
+            );
+            out("Service worker registered.");
+            return reg;
+          } catch (err) {
+            out("Service worker registration failed: " + err);
+            return null;
+          }
+        } else {
+          out("Service workers not supported in this browser.");
+          return null;
+        }
+      }
+
+      async function requestPermission() {
+        const status = await Notification.requestPermission();
+        out("Notification permission: " + status);
+        return status === "granted";
+      }
+
+      async function obtainToken() {
+        try {
+          const reg = await registerSW();
+          const token = await getToken(messaging, {
+            vapidKey: VAPID_KEY,
+            serviceWorkerRegistration: reg ?? undefined,
+          });
+          if (token) {
+            out("FCM token:\n" + token);
+          } else {
+            out(
+              "No registration token available. Request permission to generate one."
+            );
+          }
+        } catch (err) {
+          out("An error occurred while retrieving token: " + err);
+        }
+      }
+
+      onMessage(messaging, (payload) => {
+        console.log("Message received in foreground:", payload);
+        alert("Message received in foreground: " + JSON.stringify(payload));
+        if (Notification.permission === "granted") {
+          const { title, body, icon } = payload.notification || {};
+          new Notification(title || "New Message", {
+            body: body || "You have a new notification.",
+            icon: icon || "/icon.png",
+          });
+        } else {
+          alert(
+            `New message: ${payload.notification?.title || "No title"}\n${
+              payload.notification?.body || ""
+            }`
+          );
+        }
+      });
+
+      document
+        .getElementById("enableBtn")
+        .addEventListener("click", async () => {
+          const granted = await requestPermission();
+          if (granted) out("Permission granted — you can now get a token.");
+        });
+
+      document
+        .getElementById("getTokenBtn")
+        .addEventListener("click", async () => {
+          await obtainToken();
+        });
+    </script>
+  </body>
+</html>
